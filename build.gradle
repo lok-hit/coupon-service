@@ -26,6 +26,7 @@ test {
     useJUnitPlatform()
     jvmArgs '--enable-preview'
     jvmArgs "-javaagent:${configurations.testRuntimeClasspath.find { it.name.contains('mockito-core') }}"
+    systemProperty 'org.mockito.plugins.MockMaker', 'mock-maker-subclass'
 }
 
 tasks.withType(JavaCompile).configureEach {
