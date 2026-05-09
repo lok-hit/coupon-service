@@ -1,0 +1,65 @@
+# Jenkins on Oracle Cloud Free Tier VM
+#
+# Starts:
+#   jenkins  — Jenkins LTS with Docker-in-Docker capability (socket mount)
+#   nginx    — Reverse proxy with TLS termination
+#
+# First-time setup:
+#   1. Run oracle-setup.sh as root on the VM
+#   2. Copy this directory to /opt/jenkins/ on the VM
+#   3. Edit nginx.conf — replace YOUR_DOMAIN with your actual domain
+#   4. docker compose up -d
+#   5. certbot --nginx -d YOUR_DOMAIN
+#   6. Retrieve admin password:
+#      docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts-jdk21
+    container_name: jenkins
+    # root user required to access the Docker socket
+    user: root
+    ports:
+      - "127.0.0.1:8080:8080"   # Only accessible via nginx
+      - "50000:50000"            # Jenkins agent JNLP port (if using remote agents)
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      # Mount host Docker socket so Jenkins can run docker build/push
+      # Security note: this grants Jenkins root-equivalent access to the host.
+      # Acceptable on a single-purpose Oracle Cloud VM; use Docker-in-Docker
+      # or Kaniko instead if hardening is required.
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      JAVA_OPTS: >-
+        -Djenkins.install.runSetupWizard=true
+        -Dhudson.model.DirectoryBrowserSupport.CSP=
+        -XX:+UseContainerSupport
+        -XX:MaxRAMPercentage=60.0
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+    depends_on:
+      - jenkins
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  jenkins_home:
