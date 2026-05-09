@@ -10,13 +10,15 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  checks: write
+  pull-requests: write
+  contents: read
+
 jobs:
   test:
     name: Build & Test
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
 
     steps:
       - name: Checkout
@@ -32,14 +34,10 @@ jobs:
       - name: Grant execute permission to gradlew
         run: chmod +x gradlew
 
-      # Testcontainers requires Docker — ubuntu-latest has it pre-installed.
-      # DOCKER_HOST is already set by the runner; no extra setup needed.
       - name: Run tests
         run: ./gradlew test --no-daemon
         env:
-          # Ryuk is a Testcontainers cleanup agent — keep enabled in CI
           TESTCONTAINERS_RYUK_DISABLED: "false"
-          # Reuse containers across test classes within one run (faster)
           TESTCONTAINERS_REUSE_ENABLE: "true"
 
       - name: Upload test reports
