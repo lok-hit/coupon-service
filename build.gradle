@@ -6,8 +6,8 @@ group = 'org.lokhit'
 version = '1.0-SNAPSHOT'
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    sourceCompatibility = JavaVersion.VERSION_23
+    targetCompatibility = JavaVersion.VERSION_23
 }
 
 repositories {
@@ -22,18 +22,12 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-test {
-    useJUnitPlatform()
-    jvmArgs '--enable-preview'
-    jvmArgs "-javaagent:${configurations.testRuntimeClasspath.find { it.name.contains('mockito-core') }}"
-    systemProperty 'org.mockito.plugins.MockMaker', 'mock-maker-subclass'
-}
-
 tasks.withType(JavaCompile).configureEach {
-    options.compilerArgs += ['--enable-preview', '--release', '25']
+    options.compilerArgs += ['--enable-preview', '--release', '23']
 }
 
 test {
     useJUnitPlatform()
     jvmArgs '--enable-preview'
+    systemProperty 'org.mockito.plugins.MockMaker', 'mock-maker-subclass'
 }
