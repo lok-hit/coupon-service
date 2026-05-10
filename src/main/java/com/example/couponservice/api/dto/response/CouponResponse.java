@@ -1,8 +1,11 @@
-package com.example.couponservice.infrastructure.web.dto.response;
+package com.example.couponservice.api.dto.response;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * Response payload representing a coupon.
+ */
 public record CouponResponse(
         UUID id,
         String code,

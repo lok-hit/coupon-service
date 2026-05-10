@@ -1,7 +1,7 @@
 
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.4.1'
+    id 'org.springframework.boot' version '3.5.0'
     id 'io.spring.dependency-management' version '1.1.6'
 }
 
@@ -46,13 +46,35 @@ dependencies {
     testImplementation 'org.testcontainers:testcontainers'
     testImplementation 'com.redis:testcontainers-redis:2.2.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.0'
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += ['--enable-preview', '--release', '25', '-parameters']
 }
 
+// Compiles main sources to Java 21 class format so ArchUnit's bundled ASM can
+// parse them.  We exclude RedeemCouponService (uses StructuredTaskScope.open()
+// which is a Java 25 preview API) and DomainConfiguration (references it),
+// then target --release 21 without --enable-preview, producing plain class files.
+task compileForArchUnit(type: JavaCompile) {
+    group = 'verification'
+    description = 'Compiles main sources to Java 21 bytecode format for ArchUnit analysis'
+
+    source = sourceSets.main.java
+    exclude '**/RedeemCouponService.java'
+    exclude '**/DomainConfiguration.java'
+
+    classpath = sourceSets.main.compileClasspath
+    destinationDirectory = layout.buildDirectory.dir('classes/archunit')
+
+    options.compilerArgs = ['--release', '21', '-parameters']
+    options.annotationProcessorPath = configurations.annotationProcessor
+}
+
 test {
+    dependsOn compileForArchUnit
     useJUnitPlatform()
     jvmArgs '--enable-preview'
     systemProperty 'org.mockito.plugins.MockMaker', 'mock-maker-subclass'
