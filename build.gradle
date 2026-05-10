@@ -6,13 +6,18 @@ group = 'org.lokhit'
 version = '1.0-SNAPSHOT'
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_24
-    targetCompatibility = JavaVersion.VERSION_24
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
 repositories {
     mavenCentral()
 }
+
+
 
 dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.0')
@@ -23,11 +28,17 @@ dependencies {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.compilerArgs += ['--enable-preview', '--release', '24']
+    options.compilerArgs += ['--enable-preview', '--release', '25']
 }
 
 test {
     useJUnitPlatform()
     jvmArgs '--enable-preview'
     systemProperty 'org.mockito.plugins.MockMaker', 'mock-maker-subclass'
+
+    doFirst {
+        def extDir = new File(project.layout.buildDirectory.get().asFile, 'resources/test/mockito-extensions')
+        extDir.mkdirs()
+        new File(extDir, 'org.mockito.plugins.MockMaker').text = 'mock-maker-subclass'
+    }
 }
