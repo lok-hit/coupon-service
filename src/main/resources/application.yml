@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/coupon_service
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+geolocation:
+  provider-url: http://ip-api.com/json
+  connect-timeout: 2s
+  read-timeout: 5s
+  cache-ttl: 1h
+  strategy: fail-open
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      geoLocation:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+  retry:
+    instances:
+      geoLocation:
+        max-attempts: 3
+        wait-duration: 200ms
