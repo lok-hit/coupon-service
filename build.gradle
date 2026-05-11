@@ -1,19 +1,87 @@
+
 plugins {
     id 'java'
+    id 'org.springframework.boot' version '3.5.0'
+    id 'io.spring.dependency-management' version '1.1.6'
 }
 
 group = 'org.lokhit'
 version = '1.0-SNAPSHOT'
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
 repositories {
     mavenCentral()
 }
 
+
 dependencies {
-    testImplementation platform('org.junit:junit-bom:5.10.0')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    runtimeOnly 'org.postgresql:postgresql'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
+    implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.2.0'
+    implementation 'io.github.resilience4j:resilience4j-retry:2.2.0'
+    compileOnly 'org.projectlombok:lombok:1.18.38'
+    annotationProcessor 'org.projectlombok:lombok:1.18.38'
+    testCompileOnly 'org.projectlombok:lombok:1.18.38'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.38'
+    implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+    testAnnotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:testcontainers'
+    testImplementation 'com.redis:testcontainers-redis:2.2.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.0'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['--enable-preview', '--release', '25', '-parameters']
+}
+
+// Compiles main sources to Java 21 class format so ArchUnit's bundled ASM can
+// parse them.  We exclude RedeemCouponService (uses StructuredTaskScope.open()
+// which is a Java 25 preview API) and DomainConfiguration (references it),
+// then target --release 21 without --enable-preview, producing plain class files.
+task compileForArchUnit(type: JavaCompile) {
+    group = 'verification'
+    description = 'Compiles main sources to Java 21 bytecode format for ArchUnit analysis'
+
+    source = sourceSets.main.java
+    exclude '**/RedeemCouponService.java'
+    exclude '**/DomainConfiguration.java'
+
+    classpath = sourceSets.main.compileClasspath
+    destinationDirectory = layout.buildDirectory.dir('classes/archunit')
+
+    options.compilerArgs = ['--release', '21', '-parameters']
+    options.annotationProcessorPath = configurations.annotationProcessor
 }
 
 test {
+    dependsOn compileForArchUnit
     useJUnitPlatform()
+    jvmArgs '--enable-preview'
+    systemProperty 'org.mockito.plugins.MockMaker', 'mock-maker-subclass'
+
+    doFirst {
+        def extDir = new File(project.layout.buildDirectory.get().asFile, 'resources/test/mockito-extensions')
+        extDir.mkdirs()
+        new File(extDir, 'org.mockito.plugins.MockMaker').text = 'mock-maker-subclass'
+    }
 }
